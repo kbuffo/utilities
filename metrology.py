@@ -84,7 +84,6 @@ def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None):
     d = d *.6328
     d = d - np.nanmean(d)
 
-    #d = np.rot90(d,k = 2)
     #Remove cylindrical misalignment terms
     d = d - fit.fitCylMisalign(d)[0]
 
@@ -124,7 +123,6 @@ def readConic4D(fn,rotate=None,interp=None):
     d = d *.6328
     d = d - np.nanmean(d)
     
-    #d = np.rot90(d,k = 2)
     #Remove cylindrical misalignment terms
     conic_fit = fit.fitConic(d)
     d = d - conic_fit[0]
@@ -255,8 +253,7 @@ def readCylWFS(fn,rotate=np.linspace(.75,1.5,50),interp=None):
     d = d - fit.fitCylMisalign(d)[0]
     
     # Negate to make bump positive and rotate to be consistent with looking at the part beamside.
-    #d = -d
-    d = -np.fliplr(d) #np.rot90(d,k = 2)
+    d = -np.fliplr(d)
     
     #Interpolate over NaNs
     if interp is not None:
@@ -286,8 +283,7 @@ def readConicWFS(fn,interp=None):
     d = d - np.nanmean(d)
     
     # Negate to make bump positive and rotate to be consistent with looking at the part beamside.
-    #d = -d
-    d = -np.fliplr(d) #np.rot90(d,k = 2)
+    d = -np.fliplr(d)
     
     #Remove cylindrical misalignment terms
     conic_fit = fit.fitConic(d)
