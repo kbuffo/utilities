@@ -116,12 +116,12 @@ def matchFiducials_wSeparateMag(x1,y1,x2,y2):
     start[0] = np.mean(x1-x2)
     start[1] = np.mean(y1-y2)
     start[2] = .0001
-    start[3] = 1.0
+    start[3] = 0.3
     start[4] = 1.0
 
     #Run minimization and return fiducial transformation
     res = minimize(fun,start,method='nelder-mead',\
-                   options={'disp':True,'maxfev':1000})
+                   options={'disp':True,'maxfev':10000})
     
     return res['x']
 
@@ -343,12 +343,15 @@ def AlignImagesWithFiducials_SeparateMag(img1,img2,xf1,yf1,xf2,yf2):
     newimg - img2 as aligned and interpolated to the coordinates of img1.
     """
     #Match them
-    tx,ty,theta,x_mag,y_mag = matchFiducials_wSeparateMag(yf1,xf1,yf2,xf2)
+    #tx,ty,theta,x_mag,y_mag = matchFiducials_wSeparateMag(yf1,xf1,yf2,xf2)
+    #pdb.set_trace()
+
+    tx,ty,theta,x_mag,y_mag = matchFiducials_wSeparateMag(xf1,yf1,xf2,yf2)
 
     x2_wNaNs,y2_wNaNs,z2_wNaNs = man.unpackimage(img2,remove = False,xlim=[0,np.shape(img2)[1]],\
                            ylim=[0,np.shape(img2)[0]])
     #Apply transformations to x,y coords
-    x2_wNaNs,y2_wNaNs = transformCoords_wSeparateMag(x2_wNaNs,y2_wNaNs,ty,tx,theta,x_mag,y_mag)
+    x2_wNaNs,y2_wNaNs = transformCoords_wSeparateMag(x2_wNaNs,y2_wNaNs,tx,ty,theta,x_mag,y_mag)
     
     #Get x,y,z points from reference image
     x1,y1,z1 = man.unpackimage(img1,remove=False,xlim=[0,np.shape(img1)[1]],\
