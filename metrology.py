@@ -101,6 +101,46 @@ def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None):
 
     return d,dx
 
+def readCyl4D_h5(h5_file):
+    f = h5py.File(h5_file, 'r')
+    meas = f['measurement0']
+
+    #################
+    # Getting the attributes of the data directly from the .h5 file
+    wedge = meas['genraw'].attrs['wedge']
+    height_unit = meas['genraw'].attrs['height_units']
+    wave = meas['genraw'].attrs['wavelength']
+    xpix = meas['genraw'].attrs['xpix']
+
+    #################
+    # Processing the data as though it's a cylinder.
+    # Apply the wedge factor.
+    raw_data = array(meas['genraw']['data'])  #*wedge
+    # Removing the absurdly large value defaulted to for bad data and replacing it with a NaN.
+    raw_data[raw_data > 1e10] = NaN
+    # Then stripping that bad data flagged as nans from the perimeter.
+    data = man.stripnans(raw_data)
+    # Set the average surface to zero (i.e., remove piston)
+    data -= nanmean(data)
+    # Remove cylindrical misalignment.
+    data = data - fit.fitCylMisalign(data)[0]
+
+    # Apply unit transformation converting data to microns.
+    if height_unit == 'wv':
+        wavelength = float(wave[:-3])
+        data *= wavelength/1000
+    if height_unit == 'nm':
+        data /= 1000
+
+    # Apply unit transformation converting pixel size to mm.
+    pix_unit = xpix[xpix.find(' ') + 1:]
+    pix_num = float(xpix[:xpix.find(' ')])
+
+    if pix_unit == 'inch':
+        pix_num *= 25.4
+    
+    return data,pix_num 
+
 def readConic4D(fn,rotate=None,interp=None):
     """
     Load in data from 4D measurement of cylindrical mirror.
