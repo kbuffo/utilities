@@ -5,6 +5,9 @@ from matplotlib import ticker,colors
 import pickle,pdb
 from mpl_toolkits.mplot3d import Axes3D
 
+def printer():
+    print('Hello, world!')
+
 def scatter3d(x,y,z,**args):
     """Make a 3d scatter plot"""
     fig = figure()
@@ -70,7 +73,7 @@ def pltd2(x1,y1,fn,xlabel='',ylabel1='',ylabel2='',title='',\
 
 #Print a number in scientific notation
 def scinot(x):
-    print '%e' % x
+    print('%e' % x)
 
 #Find index where vector is closest to a value
 def mindiff(x,y):

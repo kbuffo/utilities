@@ -9,12 +9,12 @@ def closest_point_on_line(points,lVersor,lPoint):
     vd=lVersor/((np.array(lVersor)**2).sum())  #normalize vector, not sure it is necessary.
     return lPoint+(points-lPoint).dot(vd)[:,np.newaxis]*(vd)
 
-def cylinder_error3(odr=(0,0,0,0),points=None,extra=False,xy=False):  
+def cylinder_error3(odr=(0,0,0,0),points=None,extra=False,xy=False):
 #from v1
 #origin=(0,0,0),direction=(0,1.,0),radius is calculated from best fit
-    """Given a set of N points in format Nx3, returns the rms surface error on the cylinder defined by origin (intercept of the axis with x=0) and direction, 
-    passed as 4-vector odr (origin_y,origin_z,direction_x,direction_z). 
-    Best fit radius for odr is calculated as average. 
+    """Given a set of N points in format Nx3, returns the rms surface error on the cylinder defined by origin (intercept of the axis with x=0) and direction,
+    passed as 4-vector odr (origin_y,origin_z,direction_x,direction_z).
+    Best fit radius for odr is calculated as average.
     If extra is set, additional values are returned :
         radius: best fit radius for the cylinder.
         deltaR[N,3]: deviation from radius for each point.
@@ -26,7 +26,7 @@ def cylinder_error3(odr=(0,0,0,0),points=None,extra=False,xy=False):
     else:
         origin=(odr[0],0,odr[1])
         direction=(odr[2],1.,odr[3])
-    
+
     #vd=direction/((np.array(direction)**2).sum())  #normalize vector, not sure it is necessary.
     x,y,z=np.hsplit(points,3)
     Paxis=closest_point_on_line(points,direction,origin)
@@ -60,25 +60,23 @@ if __name__=="__main__":
     plt.clf()
     plot_points(pts,shape=[50,50])
 
-    def p(x): print x # callback function 
+    def p(x): print(x) # callback function
         #passed to minimization to print each step.
 
     odr2=(0,5000.,0,0.) #use nominal value for guess direction
     result=minimize(fit_func,x0=(odr2),
                     args=(pts,),options={'maxiter':500},method='Nelder-Mead',callback=p)
-    print '-----------------------------------'
-    print 'Results of fit on region:'
-    print result    
+    print('-----------------------------------')
+    print('Results of fit on region:')
+    print(result)
     odr=result.x
     fom,deltaR,coeff=fit_func(odr,pts,extra=True)
-    print 'Angle of cylinder axis with y axis (deg):'
-    print np.arccos(np.sqrt(1-(odr[-2:]**2).sum()))*180/np.pi
-    print 'Cylinder parameters (angle(deg), R@y=0):'
-    print np.arctan(coeff)*180/np.pi,coeff
+    print('Angle of cylinder axis with y axis (deg):')
+    print(np.arccos(np.sqrt(1-(odr[-2:]**2).sum()))*180/np.pi)
+    print('Cylinder parameters (angle(deg), R@y=0):')
+    print(np.arctan(coeff)*180/np.pi,coeff)
 
     plt.figure(2)
     plt.clf()
     plot_points(deltaR,shape=[50,50])
     plt.show()
-
-    

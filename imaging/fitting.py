@@ -4,6 +4,9 @@ import scipy.signal
 import pdb
 from astropy.modeling import models,fitting
 
+def printer():
+    print('Hello, world 2!')
+
 def legendre2d(d,xo=2,yo=2,xl=None,yl=None):
     """
     Fit a set of 2d Legendre polynomials to a 2D array.
@@ -33,13 +36,13 @@ def legendre2d(d,xo=2,yo=2,xl=None,yl=None):
             p_init.fixed[key] = False
     else:
         p_init = models.Legendre2D(xo,yo)
-    
+
     sh = np.shape(d)
     x,y = np.meshgrid(np.linspace(-1,1,sh[1]),\
                       np.linspace(-1,1,sh[0]))
     index = ~np.isnan(d)
     p = fit_p(p_init,x[index],y[index],d[index])
-    
+
     return p(x,y),p.parameters.reshape((yo+1,xo+1))
 
 def fitCylMisalign(d):
@@ -72,7 +75,7 @@ def fitLegendreDistortions(d,xo=2,yo=2,xl=None,yl=None):
 
     #Perform negation
     coeff[(az+ax)%2==1] *= -1.
-    
+
     return [coeff,ax,az]
 
 def sgolay2d ( z, window_size, order, derivative=None):
@@ -89,9 +92,9 @@ def sgolay2d ( z, window_size, order, derivative=None):
 
     half_size = window_size // 2
 
-    # exponents of the polynomial. 
-    # p(x,y) = a0 + a1*x + a2*y + a3*x^2 + a4*y^2 + a5*x*y + ... 
-    # this line gives a list of two item tuple. Each tuple contains 
+    # exponents of the polynomial.
+    # p(x,y) = a0 + a1*x + a2*y + a3*x^2 + a4*y^2 + a5*x*y + ...
+    # this line gives a list of two item tuple. Each tuple contains
     # the exponents of the k-th term. First element of tuple is for x
     # second element for y.
     # Ex. exps = [(0,0), (1,0), (0,1), (2,0), (1,1), (0,2), ...]

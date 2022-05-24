@@ -67,7 +67,7 @@ def matchFiducials(x1,y1,x2,y2):
     #Run minimization and return fiducial transformation
     res = minimize(fun,start,method='nelder-mead',\
                    options={'disp':True,'maxfev':1000})
-    
+
     return res['x']
 
 def matchFiducials_wMag(x1,y1,x2,y2):
@@ -83,7 +83,7 @@ def matchFiducials_wMag(x1,y1,x2,y2):
 
     #Make function to minimize
     fun = lambda p: sumOfSquares(x1,y1,*transformCoords_wMag(x2,y2,*p))
-    
+
     #Make starting guess
     start = np.zeros(4)
     start[0] = np.mean(x1-x2)
@@ -94,7 +94,7 @@ def matchFiducials_wMag(x1,y1,x2,y2):
     #Run minimization and return fiducial transformation
     res = minimize(fun,start,method='nelder-mead',\
                    options={'disp':True,'maxfev':1000})
-    
+
     return res['x']
 
 def matchFiducials_wSeparateMag(x1,y1,x2,y2):
@@ -110,7 +110,7 @@ def matchFiducials_wSeparateMag(x1,y1,x2,y2):
 
     #Make function to minimize
     fun = lambda p: sumOfSquares(x1,y1,*transformCoords_wSeparateMag(x2,y2,*p))
-    
+
     #Make starting guess
     start = np.zeros(5)
     start[0] = np.mean(x1-x2)
@@ -122,7 +122,7 @@ def matchFiducials_wSeparateMag(x1,y1,x2,y2):
     #Run minimization and return fiducial transformation
     res = minimize(fun,start,method='nelder-mead',\
                    options={'disp':True,'maxfev':10000})
-    
+
     return res['x']
 
 def sumOfSquares(x1,y1,x2,y2):
@@ -180,7 +180,7 @@ def stitchImages(img1,img2):
 
     #Interpolate stitched image onto expanded image grid
     newimg = griddata((x2,y2),z2,(x1,y1),method='linear')
-    print 'Interpolation ok'
+    print('Interpolation ok')
     newimg = newimg.reshape(shape(img1))
 
     #Images should now be in the same reference frame
@@ -214,7 +214,7 @@ def overlapTrans(x,y,tx,ty,theta,sx,sy):
             -x*np.sin(theta)+y*np.cos(theta)
     x2,y2 = x2+tx, y2+ty
     x2,y2 = x2*sx, y2*sy
-    
+
     return x2,y2
 
 def overlapMerit(x1,y1,z1,x2,y2,z2,tx,ty,theta,sx,sy):
@@ -269,7 +269,7 @@ def overlapImages(img1,img2,scale=False):
         fun = lambda p: overlapMerit(x1,y1,img1,x2,y2,img2,\
                                      p[0],p[1],p[2],1,1)[0]
         start = [cx1-cx2+.01,cy1-cy2+.01,0.1]
-        print start
+        print(start)
     else:
         fun = lambda p: overlapMerit(x1,y1,img1,x2,y2,img2,\
                                      *p)[0]
@@ -313,14 +313,14 @@ def AlignImagesWithFiducials(img1,img2,xf1,yf1,xf2,yf2):
                            ylim=[0,np.shape(img2)[0]])
     #Apply transformations to x,y coords
     x2_wNaNs,y2_wNaNs = transformCoords_wMag(x2_wNaNs,y2_wNaNs,ty,tx,theta,mag)
-    
+
     #Get x,y,z points from reference image
     x1,y1,z1 = man.unpackimage(img1,remove=False,xlim=[0,np.shape(img1)[1]],\
                            ylim=[0,np.shape(img1)[0]])
 
     #Interpolate stitched image onto expanded image grid
     newimg = griddata((x2_wNaNs,y2_wNaNs),z2_wNaNs,(x1,y1),method='linear')
-    print 'Interpolation ok'
+    print('Interpolation ok')
     newimg = newimg.reshape(np.shape(img1))
 
     #Images should now be in the same reference frame
@@ -352,14 +352,14 @@ def AlignImagesWithFiducials_SeparateMag(img1,img2,xf1,yf1,xf2,yf2):
                            ylim=[0,np.shape(img2)[0]])
     #Apply transformations to x,y coords
     x2_wNaNs,y2_wNaNs = transformCoords_wSeparateMag(x2_wNaNs,y2_wNaNs,tx,ty,theta,x_mag,y_mag)
-    
+
     #Get x,y,z points from reference image
     x1,y1,z1 = man.unpackimage(img1,remove=False,xlim=[0,np.shape(img1)[1]],\
                            ylim=[0,np.shape(img1)[0]])
 
     #Interpolate stitched image onto expanded image grid
     newimg = griddata((x2_wNaNs,y2_wNaNs),z2_wNaNs,(x1,y1),method='linear')
-    print 'Interpolation ok'
+    print('Interpolation ok')
     newimg = newimg.reshape(np.shape(img1))
 
     #Images should now be in the same reference frame

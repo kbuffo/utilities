@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize
 import pdb
 import utilities.imaging.man as man
+# import imaging.man as man
 import utilities.imaging.fitting as fit
 import scipy.ndimage as nd
 from utilities.plotting import scatter3d
@@ -61,7 +62,7 @@ def findGuess(d):
         radius = Ny**2/8./Ysag
         curv = -np.sign(np.mean(np.diff(np.diff(ysl))))
         yaw = -np.pi/2
-        
+
     return curv,radius,yaw,np.arctan(yfit[0]),\
                            np.arctan(xfit[0]),\
                            -radius+np.nanmean(d)

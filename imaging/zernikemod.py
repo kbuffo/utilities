@@ -2,7 +2,7 @@ import numpy as np
 from math import factorial
 from numpy.ma import masked_array
 import scipy
-from scipy.misc import factorial
+from scipy.special import factorial
 import scipy.stats as stat
 import pdb
 
@@ -10,32 +10,32 @@ import pdb
 def rnm(n,m,rho):
     """
     Return an array with the zernike Rnm polynomial calculated at rho points.
-    
-    
+
+
     **ARGUMENTS:**
-    
+
         === ==========================================
         n    n order of the Zernike polynomial
         m    m order of the Zernike polynomial
-        rho  Matrix containing the radial coordinates. 
-        === ==========================================       
-    
+        rho  Matrix containing the radial coordinates.
+        === ==========================================
+
     .. note:: For rho>1 the returned value is 0
-    
+
     .. note:: Values for rho<0 are silently returned as rho=0
-    
+
     """
-    
+
     if(type(n) is not int):
-        raise Exception, "n must be integer"
+        raise Exception("n must be integer")
     if(type(m) is not int):
-        raise Exception, "m must be integer"
+        raise Exception("m must be integer")
     if (n-m)%2!=0:
-        raise Exception, "n-m must be even"
+        raise Exception("n-m must be even")
     if abs(m)>n:
-        raise Exception, "The following must be true |m|<=n"
+        raise Exception("The following must be true |m|<=n")
     mask=np.where(rho<=1,False,True)
-    
+
     if(n==0 and m==0):
         return  masked_array(data=np.ones(np.shape(rho)), mask=mask)
     rho=np.where(rho<0,0,rho)
@@ -48,37 +48,37 @@ def rnm(n,m,rho):
         p=CR*pow(rho,n-2*s)
         Rnm=Rnm+p
     return masked_array(data=Rnm, mask=mask)
-    
+
 def zernike(n,m,rho,theta):
     """
-    Returns the an array with the Zernike polynomial evaluated in the rho and 
+    Returns the an array with the Zernike polynomial evaluated in the rho and
     theta.
-    
-    **ARGUMENTS:** 
-    
-    ===== ==========================================     
+
+    **ARGUMENTS:**
+
+    ===== ==========================================
     n     n order of the Zernike polynomial
     m     m order of the Zernike polynomial
-    rho   Matrix containing the radial coordinates. 
+    rho   Matrix containing the radial coordinates.
     theta Matrix containing the angular coordinates.
     ===== ==========================================
- 
+
     .. note:: For rho>1 the returned value is 0
-    
+
     .. note:: Values for rho<0 are silently returned as rho=0
     """
-    
-    
+
+
     Rnm=rnm(n,m,rho)
-    
+
     NC=np.sqrt(2*(n+1))
     S=(n-abs(m))/2
-    
+
     if m>0:
         Zmn=NC*Rnm*np.cos(m*theta)
     #las funciones cos() y sin() de scipy tienen problemas cuando la grilla
     # tiene dimension cero
-    
+
     elif m<0:
         Zmn=NC*Rnm*np.sin(m*theta)
     else:
@@ -219,8 +219,8 @@ def fitvec(x,y,z,N=20,r=None,m=None):
     c = scipy.linalg.lstsq(A,z)
 
     return c
-    
-    
+
+
 
 #Function to output Zernike coefficients and RMS fit error for x,y,z txt file
 def zcoeff(filename,save=False,cx=0.,cy=0.,rad=1.,order=20,r=None,m=None,**kwags):
@@ -288,8 +288,8 @@ def zcoeff(filename,save=False,cx=0.,cy=0.,rad=1.,order=20,r=None,m=None,**kwags
     fitsurf = zernsurf(x.flatten(),y.flatten(),cx,cy,rad,fit[0],r=r,m=m)
 ##
 ##    #Do residuals match up with those from fit?
-##    print sum((fitsurf-sagz)**2)
-##    print fit[1]
+##    print(sum((fitsurf-sagz)**2))
+##    print(fit[1])
 
     rms = sqrt(fit[1]/size(sagz))
 

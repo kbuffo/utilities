@@ -29,7 +29,7 @@ def readCylScript(fn,rotate=np.linspace(.75,1.5,50),interp=None):
     #Ensure wedge factor is 0.5
     wedge = float(l[1])
     if wedge!=0.5:
-        print 'Wedge factor is ' + str(wedge)
+        print('Wedge factor is ' + str(wedge))
         pdb.set_trace()
     #Get pixel scale size
     dx = float(l[-1])
@@ -77,15 +77,18 @@ def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None):
     #Get xpix value in mm
     l = getline(fn,9)
     dx = float(l.split()[1])*1000.
-    
+
     #Remove NaNs and rescale
     d = np.genfromtxt(fn,skip_header=12,delimiter=',')
+    print('array size before manipulation:', d.shape)
     d = man.stripnans(d)
     d = d *.6328
     d = d - np.nanmean(d)
+    print('array size after striping nans:', d.shape)
 
     #Remove cylindrical misalignment terms
     d = d - fit.fitCylMisalign(d)[0]
+    print('array size after removing cyl misalign terms:', d.shape)
 
     #Rotate out CGH roll misalignment?
     if rotate is not None:
@@ -94,11 +97,12 @@ def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None):
                 nd.rotate(d,a,order=1,cval=np.nan)))) for a in rotate]
         d = man.stripnans(\
             nd.rotate(d,rotate[np.argmin(b)],order=1,cval=np.nan))
+    print('array size after rotation:', d.shape)
 
     #Interpolate over NaNs
     if interp is not None:
         d = man.nearestNaN(d,method=interp)
-
+    print('final array size:', d.shape)
     return d,dx
 
 def readCyl4D_h5(h5_file):
@@ -138,8 +142,8 @@ def readCyl4D_h5(h5_file):
 
     if pix_unit == 'inch':
         pix_num *= 25.4
-    
-    return data,pix_num 
+
+    return data,pix_num
 
 def readConic4D(fn,rotate=None,interp=None):
     """
@@ -156,13 +160,13 @@ def readConic4D(fn,rotate=None,interp=None):
     #Get xpix value in mm
     l = getline(fn,9)
     dx = float(l.split()[1])*1000.
-    
+
     #Remove NaNs and rescale
     d = np.genfromtxt(fn,skip_header=12,delimiter=',')
     d = man.stripnans(d)
     d = d *.6328
     d = d - np.nanmean(d)
-    
+
     #Remove cylindrical misalignment terms
     conic_fit = fit.fitConic(d)
     d = d - conic_fit[0]
@@ -200,7 +204,7 @@ def readFlatScript(fn,interp=None):
     #Ensure wedge factor is 0.5
     wedge = float(l[1])
     if wedge!=0.5:
-        print 'Wedge factor is ' + str(wedge)
+        print('Wedge factor is ' + str(wedge))
         pdb.set_trace()
     #Get pixel scale size
     dx = float(l[-1])
@@ -235,7 +239,7 @@ def readFlat4D(fn,interp=None):
     #Get xpix value in mm
     l = getline(fn,9)
     dx = float(l.split()[1])*1000.
-    
+
     #Remove NaNs and rescale
     d = np.genfromtxt(fn,skip_header=12,delimiter=',')
     d = man.stripnans(d)
@@ -291,10 +295,10 @@ def readCylWFS(fn,rotate=np.linspace(.75,1.5,50),interp=None):
 
     #Remove cylindrical misalignment terms
     d = d - fit.fitCylMisalign(d)[0]
-    
+
     # Negate to make bump positive and rotate to be consistent with looking at the part beamside.
     d = -np.fliplr(d)
-    
+
     #Interpolate over NaNs
     if interp is not None:
         d = man.nearestNaN(d,method=interp)
@@ -321,14 +325,14 @@ def readConicWFS(fn,interp=None):
     d = pyfits.getdata(fn)
     d = man.stripnans(d)
     d = d - np.nanmean(d)
-    
+
     # Negate to make bump positive and rotate to be consistent with looking at the part beamside.
     d = -np.fliplr(d)
-    
+
     #Remove cylindrical misalignment terms
     conic_fit = fit.fitConic(d)
     d = d - conic_fit[0]
-    
+
     #Interpolate over NaNs
     if interp is not None:
         d = man.nearestNaN(d,method=interp)
@@ -352,7 +356,7 @@ def readFlatWFS(fn,interp=None):
     d = pyfits.getdata(fn)
     d = man.stripnans(d)
     d = -d
-    
+
     #Interpolate over NaNs
     if interp is not None:
         d = man.nearestNaN(d,method=interp)
@@ -440,7 +444,7 @@ def readzygo(filename):
     phase[np.where(phase==phase.max())] = np.nan
     phase = phase*scale*o*wave/phaseres
     f.close()
-    print wave, scale, o, phaseres
+    print(wave, scale, o, phaseres)
 
     return intensity, phase, latscale
 

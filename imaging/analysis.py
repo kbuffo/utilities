@@ -31,7 +31,7 @@ def findMoments(d):
     rmsx = nansum((x-cx)**2*d)/nansum(d)
     rmsy = nansum((y-cy)**2*d)/nansum(d)
     pdb.set_trace()
-    
+
     return cx,cy,sqrt(rmsx),sqrt(rmsy)
 
 def nanflat(d):
@@ -109,13 +109,13 @@ class peakInformation:
         x0 = min([self.x0,self.x1])
         x1 = max([self.x0,self.x1])
         y0 = min([self.y0,self.y1])
-        y1 = max([self.y0,self.y1])            
+        y1 = max([self.y0,self.y1])
         #Compute centroid between coordinates and update centroid list
         cx,cy,rmsx,rmsy = findMoments(self.img[y0:y1,x0:x1])
-        print 'X: ' + str(cx+x0)
-        print 'Y: ' + str(cy+y0)
-        print 'RMS X: ' + str(rmsx)
-        print 'RMS Y: ' + str(rmsy)
+        print('X: ' + str(cx+x0))
+        print('Y: ' + str(cy+y0))
+        print('RMS X: ' + str(rmsx))
+        print('RMS Y: ' + str(rmsy))
         try:
             self.gx.append(cx+x0)
             self.gy.append(cy+y0)
@@ -133,10 +133,10 @@ class peakInformation:
         self.y1 = None
     def close(self):
         self.fig.canvas.mpl_disconnect(self.con)
-        print self.gx
-        print self.gy
-        print self.rmsx
-        print self.rmsy
+        print(self.gx)
+        print(self.gy)
+        print(self.rmsx)
+        print(self.rmsy)
         close(self.fig)
 
 def getPoints(img,log=False):
@@ -166,4 +166,3 @@ def getSubApp(img,log=False,points=None):
     else:
         x,y = points
     return img[y.min():y.max(),x.min():x.max()]
-
