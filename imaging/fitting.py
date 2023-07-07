@@ -82,25 +82,43 @@ def fitLegendreDistortions(d,xo=2,yo=2,xl=None,yl=None):
 
     return [coeff,ax,az]
 
-def generateDistortion_wRef(xo, yo, ref, N_distortions=1):
+def generateDistortion_wRef(xo, yo, ref, weight_xo=None, weight_yo=None,
+                            N_distortions=1):
     """
     Generate distortion image(s) based on fitting a reference image (ref) with Legendre
     polynomials of order (xo) and (yo). If N_distortions > 1, the distortion images will be returned
-    as a 3D array with shape: (N_distortions, ref.shape[0], ref.shape[1])
+    as a 3D array with shape: (N_distortions, ref.shape[0], ref.shape[1]).
+    If specified, it is required that weight_xo <= xo and weight_yo <= yo.
+    weight_xo and weight_yo allow you to specify up to what order in each dimension
+    you want to use coefficients from the reference image to sample from. Specifying these is
+    helpful if you know what orders dominate your ref image in x and y if you want a more faithful
+    creation of a distortion based on ref.
     """
     # initialize a legendre model of xo, yo order in x and y
     p = models.Legendre2D(xo, yo)
     # get coefficients from reference image
     _, ref_coeffs = legendre2d(ref, xo=xo, yo=yo)
-    # get mean and std of reference coefficients
-    mu, sigma = np.nanmean(ref_coeffs), np.nanstd(ref_coeffs)
+    if weight_xo is None: weight_xo = xo
+    if weight_yo is None: weight_yo = yo
+    # calculate the inner coefficient matrix
+    # this is the matrix that is weighted
+    ref_inner = ref_coeffs[:weight_yo+1, :weight_xo+1]
+    # calculate the outter coefficient matrix
+    ref_outer = np.copy(ref_coeffs)
+    ref_outer[:weight_yo+1, :weight_xo+1] = np.nan
+    # calculate the means and stds of the inner and outer matrices
+    mus = [np.nanmean(array) for array in [ref_inner, ref_outer] if not np.all(np.isnan(array))]
+    sigmas = [np.nanstd(array) for array in [ref_inner, ref_outer] if not np.all(np.isnan(array))]
     # get x and y points from reference image
     x, y = np.meshgrid(np.linspace(-1, 1, ref.shape[1]), np.linspace(-1, 1, ref.shape[0]))
     # generate distortion maps
     dist_maps = np.zeros((N_distortions, ref.shape[0], ref.shape[1]))
     for i in range(N_distortions):
-        p_coeffs = rand.normal(loc=mu, scale=sigma, size=ref_coeffs.size)
-        p.parameters = p_coeffs
+        p_coeffs_inner = rand.normal(loc=mus[0], scale=sigmas[0], size=ref_inner.size)
+        p_coeffs_outer = np.array([])
+        if not np.all(np.isnan(ref_outer)):
+            p_coeffs_outer = rand.normal(loc=mus[1], scale=sigmas[1], size=ref_coeffs.size-ref_inner.size)
+        p.parameters = np.concatenate((p_coeffs_inner.flatten(), p_coeffs_outer.flatten()), axis=0)
         dist_map = p(x,y)
         dist_maps[i] = dist_map#((dist_map-np.nanmin(dist_map))/(dist_map))
     if N_distortions == 1: dist_maps = dist_maps.reshape((ref.shape[0], ref.shape[1]))

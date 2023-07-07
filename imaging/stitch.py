@@ -21,6 +21,9 @@ def transformCoords(x,y,tx,ty,theta):
     and rotation theta about x
     Returns: x,y of new coords
     """
+    # print('here is the tx you gave me:', tx)
+    # print('here is the ty you gave me:', ty)
+    # print('here is the theta you gave me:', theta)
     trans = tr.translation_matrix([tx,ty,0])
     rot = tr.rotation_matrix(theta,[0,0,1],point=[np.mean(x),np.mean(y),0])
     pos0 = np.array((x,y,np.repeat(0.,np.size(x)),np.repeat(1.,np.size(x))))
@@ -125,6 +128,25 @@ def matchFiducials_wSeparateMag(x1,y1,x2,y2):
     #Run minimization and return fiducial transformation
     res = minimize(fun,start,method='nelder-mead',\
                    options={'disp':True,'maxfev':10000})
+
+    return res['x']
+
+def matchFiducials_transOnly(x1,y1,x2,y2):
+    """This function will compute only a translation
+    to match a list of fiducial coordinates
+    Returns: translation tx and ty to bring x2,y2 to x1,y1
+    """
+    #Make function to minimize
+    fun = lambda p: sumOfSquares(x1,y1,*transformCoords(x2,y2,*p, 0))
+
+    #Make starting guess
+    start = np.zeros(2)
+    start[0] = np.mean(x1-x2)
+    start[1] = np.mean(y1-y2)
+
+    #Run minimization and return fiducial transformation
+    res = minimize(fun,start,method='nelder-mead',\
+                   options={'disp':True,'maxfev':1000})
 
     return res['x']
 
@@ -305,6 +327,37 @@ def overlapImages(img1,img2,scale=False):
     pdb.set_trace()
 
     return imgnew
+
+def AlignImagesWithTransform(img1, img2, tx, ty, theta, x_mag, y_mag):
+    """
+    Aligns img2 to img1 based on a transformation needed to move the coordinates of
+    img2 into the frame of img1.
+    Arguments:
+    img1 - the reference image to be aligned to.
+    img2 - the image to be aligned to the reference image.
+    tx - x translation to be applied to img2.
+    ty - y translation to be applied to img2.
+    theta - rotation to be applied to img2.
+    x_mag - maginfication in x dimension to be applied to img2.
+    y_mag - maginfication in y dimension to be applied to img2.
+    Returns:
+    newimg - img2 as aligned and interpolated to the coordinates of img1.
+    """
+    # unpack coords from img2: the image to be aligned
+    x2, y2, z2 = man.unpackimage(img2, remove=False, xlim=[0,np.shape(img2)[1]],
+                                         ylim=[0,np.shape(img2)[0]])
+    # transform the coords of img2 to be aligned with img1
+    x2_T, y2_T = transformCoords_wSeparateMag(x2, y2, tx, ty, theta, x_mag, y_mag)
+    # unpack coords from img1: the reference image
+    x1, y1, z1 = man.unpackimage(img1, remove=False, xlim=[0,np.shape(img1)[1]],
+                                         ylim=[0,np.shape(img1)[0]])
+    # regrid the transformed coordinates onto the same grid as img1 (reference img)
+    newimg = griddata((x2_T, y2_T), z2, (x1, y1), method='linear')
+    print('Interpolation ok')
+    # reshape new image to be same shape as reference image
+    newimg = newimg.reshape(np.shape(img1))
+    newimg = matchPistonTipTilt(img1, newimg)
+    return newimg
 
 def AlignImagesWithFiducials(img1,img2,xf1,yf1,xf2,yf2):
     """

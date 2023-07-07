@@ -103,6 +103,7 @@ def make_plot(ax, x_label, y_label, ax_fontsize, plot_title,
     ax.set_title(plot_title, fontsize=ax_fontsize+2)
     extent = mk_extent(data, dx)
     # print('vbounds received:', vbounds)
+    print('vbounds:', vbounds)
     im = ax.imshow(data, extent=extent, vmin=vbounds[0], vmax=vbounds[1],
                     aspect=aspect, cmap=colormap)
     if share_row_cbar:
@@ -181,7 +182,7 @@ def get_tickvals(d, dx, xtick_vals, ytick_vals):
 
     return (xtick_loc, ytick_loc)
 
-def old_figPlot(d, dx, xtick_vals=None, ytick_vals=None, plotsize=(7,6),
+def old_figPlot(d_in, dx, xtick_vals=None, ytick_vals=None, plotsize=(7,6),
                 title=None, title_fntsz=12, x_title='Azimuthal Dimension (mm)',
                 y_title='Axial Dimension (mm)', cbar_title='Figure (microns)',
                 ax_fntsz=10, tick_fntsz=8, stats=False, units='um',
@@ -193,6 +194,7 @@ def old_figPlot(d, dx, xtick_vals=None, ytick_vals=None, plotsize=(7,6),
     Specify tick mark locations in mm, plotsize, titles,
     fontsizes, and peak-to-valley and rms values.
     """
+    d = np.copy(d_in)
     if units == 'nm':
         d *= 1000.
     if ax == None:

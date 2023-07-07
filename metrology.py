@@ -66,7 +66,7 @@ def readCylScript(fn,rotate=np.linspace(.75,1.5,50),interp=None):
 
     return d,dx
 
-def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None):
+def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None, fliplr=True):
     """
     Load in data from 4D measurement of cylindrical mirror.
     Scale to microns, remove misalignments,
@@ -77,6 +77,8 @@ def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None):
     Distortion is bump positive looking at concave surface.
     Imshow will present distortion in proper orientation as if
     viewing the concave surface.
+    fliplr will flip the left and right sides of an image since taking a cylindrical
+    measurement with the CGH will flip it across the axial axis when viewing in 4D
     """
     #Get xpix value in mm
     l = getline(fn,9)
@@ -107,9 +109,10 @@ def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None):
     if interp is not None:
         d = man.nearestNaN(d,method=interp)
     print('final array size:', d.shape)
+    if fliplr: d = np.fliplr(d) # we fliplr to compensate for the CGH flipping the measurement
     return d,dx
 
-def readCyl4D_h5(h5_file):
+def readCyl4D_h5(h5_file, rotate=np.linspace(.75,1.5,50), fliplr=True):
     f = h5py.File(h5_file, 'r')
     meas = f['measurement0']
 
@@ -133,7 +136,16 @@ def readCyl4D_h5(h5_file):
     # Remove cylindrical misalignment.
     data = data - fit.fitCylMisalign(data)[0]
 
+    #Rotate out CGH roll misalignment?
+    if rotate is not None:
+        b = [np.sum(np.isnan(\
+            man.stripnans(\
+                nd.rotate(data,a,order=1,cval=np.nan)))) for a in rotate]
+        data = man.stripnans(\
+            nd.rotate(data,rotate[np.argmin(b)],order=1,cval=np.nan))
+
     # Apply unit transformation converting data to microns.
+    height_unit = height_unit.decode('UTF-8')
     if height_unit == 'wv':
         wavelength = float(wave[:-3])
         data *= wavelength/1000
@@ -151,8 +163,8 @@ def readCyl4D_h5(h5_file):
 
     if pix_unit == 'inch':
         pix_num *= 25.4
-
-    return data,pix_num
+    if fliplr: data = np.fliplr(data) # we fliplr to compensate for the CGH flipping the measurement
+    return data, pix_num
 
 def readConic4D(fn,rotate=None,interp=None):
     """
@@ -257,13 +269,51 @@ def readFlat4D(fn,interp=None):
     d = man.stripnans(d)
     d = d *.6328
     d = d - np.nanmean(d)
-    d = np.fliplr(d)
+    # d = np.fliplr(d)
 
     #Interpolate over NaNs
     if interp is not None:
         d = man.nearestNaN(d,method=interp)
     print('The optic for {} is {:.2f} in long.'.format(fn, (d.shape[0]*dx)/25.4))
     return d,dx
+
+def readFlat4D_h5(h5_file):
+    f = h5py.File(h5_file, 'r')
+    meas = f['measurement0']
+    # print('meas keys:', meas.keys())
+    # print('genraw keys:', meas['genraw'].keys())
+    # print('analyzed keys:', meas['analyzed'].keys())
+    #################
+    # Getting the attributes of the data directly from the .h5 file
+    wedge = meas['genraw'].attrs['wedge']
+    height_unit = meas['genraw'].attrs['height_units']
+    wave = meas['genraw'].attrs['wavelength']
+    xpix = meas['genraw'].attrs['xpix']
+    #################
+    # Processing the data as though it's a cylinder.
+    # Apply the wedge factor.
+    raw_data = np.array(meas['genraw']['data'])  #*wedge
+    # Removing the absurdly large value defaulted to for bad data and replacing it with a NaN.
+    raw_data[raw_data > 1e10] = np.NaN
+    # Then stripping that bad data flagged as nans from the perimeter.
+    data = man.stripnans(raw_data)
+    # Set the average surface to zero (i.e., remove piston)
+    data -= np.nanmean(data)
+    # Apply unit transformation converting data to microns.
+    height_unit = height_unit.decode('UTF-8')
+    # print('height unit:', height_unit)
+    if height_unit == 'wv':
+        wavelength = float(wave[:-3])
+        data *= wavelength/1000
+    if height_unit == 'nm':
+        data /= 1000
+    # Apply unit transformation converting pixel size to mm.
+    xpix = xpix.decode('UTF-8')
+    pix_unit = xpix[xpix.find(' ') + 1:]
+    pix_num = float(xpix[:xpix.find(' ')])
+    if pix_unit == 'inch':
+        pix_num *= 25.4
+    return data, pix_num
 
 def write4DFits(filename,img,dx,dx2=None):
     """
