@@ -2,7 +2,7 @@
 #The images must have fiducials to compute translation and rotation
 #Piston/tip/tilt is done by arrays after translation/rotation is fixed
 #by fiducials
-import transformations as tr
+import utilities.transformations as tr
 import numpy as np
 import matplotlib.pyplot as plt
 import imaging.man as man

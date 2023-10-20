@@ -3,6 +3,7 @@ import pdb
 from scipy.interpolate import griddata
 from imaging.man import stripnans,nearestNaN
 from scipy.integrate import simps
+import matplotlib.pyplot as plt
 
 #This module contains Fourier analysis routine
 
@@ -18,15 +19,15 @@ def components(d,win=np.hanning):
     #Handle window
     if win != 1:
         if np.size(np.shape(d)) == 1:
-            win = win(np.size(d))/np.sqrt(np.mean(win(np.size(d))**2))
+            window = win(np.size(d))/np.sqrt(np.mean(win(np.size(d))**2))
         else:
             win1 = win(np.shape(d)[0])
             win2 = win(np.shape(d)[1])
-            win = np.outer(win1,win2)
-            win = win/np.sqrt(np.mean(win**2))
+            window = np.outer(win1,win2)
+            window = window/np.sqrt(np.mean(window**2))
 
     #Compute Fourier components
-    return np.fft.fftn(d*win)/np.size(d)
+    return np.fft.fftn(d*window)/np.size(d)
 
 def continuousComponents(d,dx,win=np.hanning):
     """Want to return Fourier components with optional window
@@ -38,15 +39,15 @@ def continuousComponents(d,dx,win=np.hanning):
     #Handle window
     if win != 1:
         if np.size(np.shape(d)) == 1:
-            win = win(np.size(d))/np.sqrt(np.mean(win(np.size(d))**2))
+            window = win(np.size(d))/np.sqrt(np.mean(win(np.size(d))**2))
         else:
             win1 = win(np.shape(d)[0])
             win2 = win(np.shape(d)[1])
-            win = np.outer(win1,win2)
-            win = win/np.sqrt(np.mean(win**2))
+            window = np.outer(win1,win2)
+            window = window/np.sqrt(np.mean(window**2))
 
     #Compute Fourier components
-    return np.fft.fftn(d*win)*dx
+    return np.fft.fftn(d*window)*dx
 
 def newFreq(f,p,nf):
     """
@@ -174,8 +175,8 @@ def realPSD(d0,win=np.hanning,dx=1.,axis=None,nans=False,minpx=10):
 
     elif np.size(np.shape(c)) == 1:
         f = np.fft.fftfreq(np.size(c),d=dx)
-        f = f[:np.size(c)/2]
-        c = c[:np.size(c)/2]
+        f = f[:int(np.size(c)/2)]
+        c = c[:int(np.size(c)/2)]
         c[0] = 0.
         c = c*np.sqrt(2.)
 
@@ -188,7 +189,7 @@ def computeFreqBand(f,p,f1,f2,df,method='linear'):
     Interpolate between f1 and f2 with size df
     Then use numerical integration
     """
-    newf = np.linspace(f1,f2,(f2-f1)/df+1)
+    newf = np.linspace(f1,f2,int((f2-f1)/df+1))
     try:
         newp = griddata(f,p/f[0],newf,method=method)
     except:
@@ -222,6 +223,66 @@ def psdScan(d,f1,f2,df,N,axis=0,dx=1.,win=np.hanning,nans=False,minpx=10):
     if axis == 0:
         m = np.transpose(m)
     return m
+
+def PSD_stack(d, dx=1):
+    """
+    Returns an array of shape (I, J, K, L) where i indexes the distortion number,
+    j indexes the direction of the PSD (j=0 for y and j=1 for x), k indexes either the frequency
+    or the coefficients (k=0 for freq values, k=1 for coeff values), and L indexes the value in PSD.
+    """
+    if d.ndim == 2:
+        d = d.reshape(1, d.shape[0], d.shape[1])
+    PSD_stack_array = []
+    for i in range(d.shape[0]):
+        freq_y, pa_y = meanPSD(d[i], dx=dx, axis=0)
+        freq_x, pa_x = meanPSD(d[i], dx=dx, axis=1)
+        psd_y = np.stack([freq_y, pa_y], axis=0)
+        psd_x = np.stack([freq_x, pa_x], axis=0)
+        dist_psd_stack = np.stack([psd_y, psd_x], axis=0)
+        PSD_stack_array.append(dist_psd_stack)
+    PSD_stack_array = np.stack(PSD_stack_array, axis=0)
+    return PSD_stack_array
+
+def PSD_plot(PSD_stacks, labels, dist_num, PSD_axis, dtype='um',
+             xlabel=None, ylabel=None, colors=None, linestyles=None,
+             freq_limit=None, legendCoords=(1.65, 0.5)):
+    N_lines = len(PSD_stacks)
+    if not colors:
+        colors = list(mcolors.TABLEAU_COLORS)[:N_lines]
+    if not linestyles:
+        linestyles = ['solid'] * N_lines
+    if ylabel is None:
+        if dtype == 'um':
+            ylabel = r'Power $\left({\mu m}^2\;mm\right)$'
+        if dtype == 'arcsec':
+            ylabel = r'Power $\left({\mathrm{arcsec}}^2\;\mathrm{mm}\right)$'
+    if xlabel is None:
+        xlabel = 'Frequency (1/mm)'
+    fig, ax = plt.subplots()
+    for i in range(N_lines):
+        PSD_array = PSD_stacks[i]
+        xvals = PSD_array[dist_num, PSD_axis, 0]
+        yvals = PSD_array[dist_num, PSD_axis, 1]
+        rmsval = computeFreqBand(xvals, yvals, xvals[0], xvals[-1], 1e-6)
+        ax.plot(xvals, yvals, color=colors[i], marker='.',
+                linestyle=linestyles[i], label=labels[i]+'\n'+r'$\sigma=${:.2f} {}'.format(rmsval, dtype))
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if freq_limit is not None:
+        ax.axvline(freq_limit, color='black', linestyle='dashed', label='Nyquist frequency', zorder=0)
+    if PSD_axis == 0:
+        PSD_direction = 'Axial'
+    if PSD_axis == 1:
+        PSD_direction = 'Azimuthal'
+    if dtype == 'um':
+        space_tag = 'Figure Space'
+    if dtype == 'arcsec':
+        space_tag = 'Slope Space'
+    ax.set_title('{} Power Spectral Density (PSD) of\nDistortion: {} -- {}'.format(PSD_direction, dist_num, space_tag))
+    ax.legend(ncol=1, bbox_to_anchor=legendCoords, loc='right')
+    plt.yscale('log')
+    plt.xscale('log')
+    return fig
 
 
 def lowpass(d,dx,fcut):

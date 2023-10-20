@@ -20,7 +20,7 @@ import figure_plotting as fp
 import fourier
 import metrology as met
 import plotting
-import transformations as trf
+import utilities.transformations as trf
 import imaging.analysis as alsis # imaging packages
 import imaging.chebFit as cheb
 import imaging.fitting as fit

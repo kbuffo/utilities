@@ -359,4 +359,5 @@ def save_figLocal(fig, dir, filename):
 
 def mk_extent(d, dx):
     img_shp = np.shape(d)
+    print(img_shp)
     return [-img_shp[1]*dx/2, img_shp[1]*dx/2, -img_shp[0]*dx/2, img_shp[0]*dx/2]
