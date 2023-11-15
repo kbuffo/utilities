@@ -333,7 +333,7 @@ def figPlot_grid(d_ls, dx_ls, xtick_vals=None, ytick_vals=None, gridsize=(1,1),
                     ax = axs[r]
                 else:
                     ax = axs[r, c]
-                figPlot(d, dx, xtick_vals=xtick_vals, ytick_vals=ytick_vals, plotsize=figsize,
+                align_figPlot(d, dx, xtick_vals=xtick_vals, ytick_vals=ytick_vals, plotsize=figsize,
                                 title=title, title_fntsz=title_fntsz, x_title=x_title,
                                 y_title=y_title, cbar_title=cbar_title, ax=ax,
                                 ax_fntsz=ax_fntsz, tick_fntsz=ax_fntsz, stats=stats, units=units,

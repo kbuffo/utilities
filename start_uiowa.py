@@ -38,6 +38,7 @@ import axroOptimization.cell_functions as cf
 import axroOptimization.scattering as scat
 import axroOptimization.scatter_v2 as scatter
 import axroOptimization.solver as solver
+import axroOptimization.nyquist_solver as nysolver
 import axroOptimization.anime_functions as anime
 
 import axroHFDFCpy.construct_connections as cc # axroHFDFCpy packages

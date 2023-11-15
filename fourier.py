@@ -2,8 +2,10 @@ import numpy as np
 import pdb
 from scipy.interpolate import griddata
 from imaging.man import stripnans,nearestNaN
+import imaging.analysis as alsis
 from scipy.integrate import simps
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 #This module contains Fourier analysis routine
 
@@ -18,13 +20,14 @@ def components(d,win=np.hanning):
     """
     #Handle window
     if win != 1:
-        if np.size(np.shape(d)) == 1:
+        if np.size(np.shape(d)) == 1: # if the data array is 1D
             window = win(np.size(d))/np.sqrt(np.mean(win(np.size(d))**2))
         else:
             win1 = win(np.shape(d)[0])
             win2 = win(np.shape(d)[1])
             window = np.outer(win1,win2)
             window = window/np.sqrt(np.mean(window**2))
+    else: window = 1
 
     #Compute Fourier components
     return np.fft.fftn(d*window)/np.size(d)
@@ -96,12 +99,10 @@ def meanPSD(d0,win=np.hanning,dx=1.,axis=0,irregular=False,returnInd=False,minpx
     """
     #Handle which axis is transformed
     if axis==0:
-        d0 = np.transpose(d0)
+        d0 = np.transpose(d0) # each row of the 2d array is an axial strip
     #Create list of slices
-    if irregular is True:
+    if irregular is True: # remove the nans from each row in the array
         d0 = [stripnans(di) for di in d0]
-    else:
-        d0 = [di for di in d0]
     #Create power spectra from each slice
     pows = [realPSD(s,win=win,dx=dx,minpx=minpx) for s in d0 \
             if np.sum(~np.isnan(s)) >= minpx]
@@ -224,7 +225,7 @@ def psdScan(d,f1,f2,df,N,axis=0,dx=1.,win=np.hanning,nans=False,minpx=10):
         m = np.transpose(m)
     return m
 
-def PSD_stack(d, dx=1):
+def PSD_stack(d, dx=1, norm=False):
     """
     Returns an array of shape (I, J, K, L) where i indexes the distortion number,
     j indexes the direction of the PSD (j=0 for y and j=1 for x), k indexes either the frequency
@@ -234,8 +235,20 @@ def PSD_stack(d, dx=1):
         d = d.reshape(1, d.shape[0], d.shape[1])
     PSD_stack_array = []
     for i in range(d.shape[0]):
-        freq_y, pa_y = meanPSD(d[i], dx=dx, axis=0)
+        freq_y, pa_y = meanPSD(d[i], dx=dx, axis=0) # compute PSD in x and y
         freq_x, pa_x = meanPSD(d[i], dx=dx, axis=1)
+        # freq_y, pa_y = realPSD(d[i], dx=dx, axis=0) # compute PSD in x and y
+        # freq_x, pa_x = realPSD(d[i], dx=dx, axis=1)
+        rms = alsis.rms(d[i]) # get rms value of array
+
+        if norm:
+            sum_rms_y = np.sqrt(np.sum(pa_y))
+            sum_rms_x = np.sqrt(np.sum(pa_x))
+            pa_y = pa_y * (rms/sum_rms_y)**2
+            pa_x = pa_x * (rms/sum_rms_x)**2
+            # pa_y = pa_y / (2*np.pi*freq_y*(freq_y[1]-freq_y[0]))
+            # pa_x = pa_x / (2*np.pi*freq_x*(freq_x[1]-freq_x[0]))
+
         psd_y = np.stack([freq_y, pa_y], axis=0)
         psd_x = np.stack([freq_x, pa_x], axis=0)
         dist_psd_stack = np.stack([psd_y, psd_x], axis=0)
@@ -243,10 +256,55 @@ def PSD_stack(d, dx=1):
     PSD_stack_array = np.stack(PSD_stack_array, axis=0)
     return PSD_stack_array
 
-def PSD_plot(PSD_stacks, labels, dist_num, PSD_axis, dtype='um',
-             xlabel=None, ylabel=None, colors=None, linestyles=None,
-             freq_limit=None, legendCoords=(1.65, 0.5)):
+def compute_PSD_stack_RMS(psd_stack, map_no, df, f1=None, f2=None, method='linear',
+                            printout=False):
+    """
+    Computes the RMS over PSD that was obtained using PSD_stack(), taking into account
+    both the axial and azimuthal PSDs. If f1 and f2 are specified, return the RMS of the
+    given frequency band. If they are None, compute the RMS over the entire frequency band of the PSD.
+    """
+    psd_array = psd_stack[map_no]
+    axial_f, axial_c = psd_array[0, 0, :], psd_array[0, 1, :]
+    az_f, az_c = psd_array[1, 0, :], psd_array[1, 1, :]
+    if f1 is None:
+        axial_f1 = axial_f[0]
+        az_f1 = az_f[0]
+    else:
+        axial_f1 = f1
+        az_f1 = f1
+    if f2 is None:
+        axial_f2 = axial_f[-1]
+        az_f2 = az_f[-1]
+    else:
+        axial_f2 = f2
+        az_f2 = f2
+    new_axial_f = np.linspace(axial_f1, axial_f2, int((axial_f2-axial_f1)/df+1))
+    new_az_f = np.linspace(az_f1, az_f2, int((az_f2-az_f1)/df+1))
+    try:
+        new_axial_p = griddata(axial_f, axial_c/axial_f[0], new_axial_f, method=method) # axial_f[0]
+        new_az_p = griddata(az_f, az_c/az_f[0], new_az_f, method=method) # az_f[0]
+    except:
+        print('Error during griddata.')
+        pdb.set_trace()
+    axial_rms = np.sqrt(simps(new_axial_p, x=new_axial_f))
+    az_rms = np.sqrt(simps(new_axial_p, x=new_axial_f))#np.sqrt(simps(new_az_p, x=new_az_f))
+    rms = np.sqrt(axial_rms**2+az_rms**2)
+    if printout:
+        print('axial rms: {:.3f}'.format(axial_rms))
+        print('azimuthal rms: {:.3f}'.format(az_rms))
+        print('total rms: {:.3f}'.format(rms))
+    return rms
+
+def PSD_plot(PSD_stacks, dist_num, PSD_axis,
+            labels=None, dtype='um', dist_num_label=None,
+            figsize=None, title_fontsize=14, ax_fontsize=12,
+            title=None, xlabel=None, ylabel=None, colors=None, linestyles=None,
+            freq_limit=None, freq_limit_label=None, freq_line_top_end=1,
+            includeLegend=True, legendCoords=(1.65, 0.5), legendCols=1, legendLoc='right',
+            xlims=None, ylims=None, include_RMS=True):
     N_lines = len(PSD_stacks)
+    if not labels:
+        labels = [''] * len(PSD_stacks)
     if not colors:
         colors = list(mcolors.TABLEAU_COLORS)[:N_lines]
     if not linestyles:
@@ -263,13 +321,24 @@ def PSD_plot(PSD_stacks, labels, dist_num, PSD_axis, dtype='um',
         PSD_array = PSD_stacks[i]
         xvals = PSD_array[dist_num, PSD_axis, 0]
         yvals = PSD_array[dist_num, PSD_axis, 1]
-        rmsval = computeFreqBand(xvals, yvals, xvals[0], xvals[-1], 1e-6)
+        rmsval = compute_PSD_stack_RMS(PSD_array, dist_num, 1e-5)
+        if include_RMS:
+            rmsLabel = 'RMS = {:.2f} {}'.format(rmsval, dtype)
+            labels = [label+'\n' for label in labels]
+        else:
+            rmsLabel = ''
         ax.plot(xvals, yvals, color=colors[i], marker='.',
-                linestyle=linestyles[i], label=labels[i]+'\n'+r'$\sigma=${:.2f} {}'.format(rmsval, dtype))
-    ax.set_xlabel(xlabel)
-    ax.set_ylabel(ylabel)
+                linestyle=linestyles[i], label=labels[i]+rmsLabel)
+    ax.set_xlabel(xlabel, fontsize=ax_fontsize)
+    ax.set_ylabel(ylabel, fontsize=ax_fontsize)
+    ax.set_yscale('log')
+    ax.set_xscale('log')
+    if figsize:
+        fig.set_size_inches(figsize[0], figsize[1])
     if freq_limit is not None:
-        ax.axvline(freq_limit, color='black', linestyle='dashed', label='Nyquist frequency', zorder=0)
+        ax.axvline(freq_limit, ymax=freq_line_top_end, color='black',
+                linestyle='dashed', label=freq_limit_label,
+                    zorder=0)
     if PSD_axis == 0:
         PSD_direction = 'Axial'
     if PSD_axis == 1:
@@ -278,10 +347,20 @@ def PSD_plot(PSD_stacks, labels, dist_num, PSD_axis, dtype='um',
         space_tag = 'Figure Space'
     if dtype == 'arcsec':
         space_tag = 'Slope Space'
-    ax.set_title('{} Power Spectral Density (PSD) of\nDistortion: {} -- {}'.format(PSD_direction, dist_num, space_tag))
-    ax.legend(ncol=1, bbox_to_anchor=legendCoords, loc='right')
-    plt.yscale('log')
-    plt.xscale('log')
+    if dist_num_label is None:
+        dist_num_label = dist_num
+    if xlims is not None:
+        print('xlims:', xlims)
+        ax.set_xlim(xmin=xlims[0], xmax=xlims[1])
+    if ylims is not None:
+        ax.set_ylim(ymin=ylims[0], ymax=ylims[1])
+    if title is None:
+        title = '{} Power Spectral Density (PSD) of\nDistortion: {} -- {}'\
+                    .format(PSD_direction, dist_num_label, space_tag)
+    ax.set_title(title, fontsize=title_fontsize)
+    if includeLegend:
+        ax.legend(ncol=legendCols, bbox_to_anchor=legendCoords, loc=legendLoc,
+                    fontsize=ax_fontsize, framealpha=0.)
     return fig
 
 
