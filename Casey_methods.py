@@ -10,10 +10,10 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 import pdb
 
-import imaging.man as man
-import imaging.stitch as stitch
-import imaging.fitting as fit
-import metrology as met
+import utilities.imaging.man as man
+import utilities.imaging.stitch as stitch
+import utilities.imaging.fitting as fit
+import utilities.metrology as met
 import fourier
 
 # home_directory = os.getcwd()

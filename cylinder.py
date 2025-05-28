@@ -2,13 +2,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import scipy.optimize
 import pdb
-import imaging.man as man
-# import imaging.man as man
-import imaging.fitting as fit
+import utilities.imaging.man as man
+import utilities.imaging.fitting as fit
 import scipy.ndimage as nd
 from plotting import scatter3d
 import plotting
-from imaging.analysis import rms
+from utilities.imaging.analysis import rms
 from scipy.interpolate import griddata
 
 #This module contains routines to fit a cylinder to

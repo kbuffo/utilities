@@ -1,7 +1,7 @@
 #This submodule includes routines to manipulate image arrays
 import numpy as np
 from scipy.interpolate import griddata
-from imaging.fitting import legendre2d
+from utilities.imaging.fitting import legendre2d
 import astropy.io.fits as pyfits
 
 import pdb

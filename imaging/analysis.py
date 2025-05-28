@@ -1,7 +1,7 @@
 #This submodule contains image analysis routines
 from matplotlib.pyplot import *
 from numpy import *
-import figure_plotting as fp
+import utilities.figure_plotting as fp
 from matplotlib.colors import LogNorm
 import pdb
 

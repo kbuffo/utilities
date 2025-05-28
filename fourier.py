@@ -1,8 +1,8 @@
 import numpy as np
 import pdb
 from scipy.interpolate import griddata
-from imaging.man import stripnans,nearestNaN
-import imaging.analysis as alsis
+from utilities.imaging.man import stripnans,nearestNaN
+import utilities.imaging.analysis as alsis
 from scipy.integrate import simps
 from axroOptimization.anime_functions import init_subplots
 import matplotlib.pyplot as plt

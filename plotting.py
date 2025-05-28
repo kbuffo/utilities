@@ -1,4 +1,3 @@
-from numpy import *
 import numpy as np
 from matplotlib.pyplot import *
 from matplotlib import ticker,colors

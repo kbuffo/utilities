@@ -1,7 +1,7 @@
 import numpy as np
-import imaging.man as man
-import imaging.analysis as alsis
-from imaging.zernikemod import fitimg
+import utilities.imaging.man as man
+import utilities.imaging.analysis as alsis
+from utilities.imaging.zernikemod import fitimg
 
 def make_radial_aperture_image(d_input, dx, radius, center_coords=None, stripnans=False, subtractmean=False):
     """

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 plt.rcParams['savefig.facecolor']='white'
-import imaging.analysis as alsis
+import utilities.imaging.analysis as alsis
 
 def printer():
     print('Hello fig_plot!')
