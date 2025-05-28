@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.optimize import minimize
-from pySurf.points import *
+# from pySurf.points import *
 import mpl_toolkits.mplot3d as m3d
-from pyGeneralRoutines.fn_add_subfix import fn_add_subfix
+# from pyGeneralRoutines.fn_add_subfix import fn_add_subfix
 
 def printer():
     print('Hello fit_cylinder!')
@@ -204,7 +204,7 @@ def fit_cylinder(points,guessValue=None):
         odr=guessValue
     else:
         odr=(0,220.,0,0)
-    result=minimize(cylinder_error,x0=(odr,),args=(points,),options={'maxiter':1000},callback=p,method='Nelder-Mead')
+    result=minimize(cylinder_error,x0=(odr,),args=(points,),options={'maxiter':1000},callback=None,method='Nelder-Mead')
     d=result.x[[2,3]]
     angle=np.arccos()
 

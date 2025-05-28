@@ -1,4 +1,5 @@
 import numpy as np
+import utilities.imaging.analysis as alsis
 import scipy
 import scipy.signal
 import pdb
@@ -56,6 +57,16 @@ def fitCylMisalign(d):
     are fit
     """
     return legendre2d(d,xl=[0,0,1,2,1],yl=[0,1,0,0,1])
+
+def fit_legendre2d_to_image(d, xo=2, yo=2, xl=None, yl=None):
+    d_fit = legendre2d(d, xo=xo, yo=yo, xl=xl, yl=yl)[0]
+    d_fit = np.where(np.isnan(d), np.nan, d_fit)
+    return d_fit
+
+def ptov_r_leg(d, xo=10, yo=10):
+    d_fit = fit_legendre2d_to_image(d, xo=xo, yo=yo)
+    pvr = alsis.ptov(d_fit) + 3*alsis.rms(d-d_fit)
+    return pvr
 
 def fitConic(d):
     """

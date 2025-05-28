@@ -5,6 +5,7 @@ import scipy
 from scipy.special import factorial
 import scipy.stats as stat
 import pdb
+from imaging.analysis import ptov, rms
 
 def printer():
     print('Hello zernikemod!')
@@ -44,7 +45,7 @@ def rnm(n,m,rho):
     rho=np.where(rho<0,0,rho)
     Rnm=np.zeros(rho.shape)
     S=(n-abs(m))/2
-    for s in range (0,S+1):
+    for s in range(0,int(S+1)):
         CR=pow(-1,s)*factorial(n-s)/ \
             (factorial(s)*factorial(-s+(n+abs(m))/2)* \
             factorial(-s+(n-abs(m))/2))
@@ -131,7 +132,11 @@ def zmatrix(rho,theta,N,r=None,m=None):
     #Create mode vectors
     if r is None:
         r,m = zmodes(N)
-
+        
+    # print('r shape: {}'.format(r.shape))
+    # print('r:', r)
+    # print('m shape: {}'.format(m.shape))
+    # print('m:', m)
     #Form matrix
     A = np.zeros((np.size(rho),np.size(r)))
 
@@ -201,9 +206,20 @@ def fitimg(img,N=20,r=None,m=None):
     A = zmatrix(rho,theta,N,r=r,m=m)
     fit = np.dot(A,coeff)
     fit = fit.reshape(np.shape(x))
+    # print('original shape: {}, fit shape: {}'.format(img.shape, fit.shape))
     fit[np.isnan(img)] = np.nan
 
     return c,fit.reshape(np.shape(x))
+
+def ptov_r(d, N=35):
+    """
+    Calculates the robust peak to valley (PVr) of an image which 4Sight uses.
+    PVr is is calculated as the peak-to-valley difference of a 35 term Zernike fit + 3*RMS 
+    of the residual (the dataset minus the 35-term fit). N is the number of Zernike terms to fit.
+    """
+    _, d_fit = fitimg(d,N=N,r=None,m=None)
+    PV_r = ptov(d_fit) + 3*rms(d-d_fit)
+    return PV_r
 
 def fitvec(x,y,z,N=20,r=None,m=None):
     """

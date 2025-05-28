@@ -4,6 +4,7 @@ from scipy.interpolate import griddata
 from imaging.man import stripnans,nearestNaN
 import imaging.analysis as alsis
 from scipy.integrate import simps
+from axroOptimization.anime_functions import init_subplots
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
@@ -25,6 +26,26 @@ def components(d,win=np.hanning):
         else:
             win1 = win(np.shape(d)[0])
             win2 = win(np.shape(d)[1])
+            window = np.outer(win1,win2)
+            window = window/np.sqrt(np.mean(window**2))
+    else: window = 1
+
+    #Compute Fourier components
+    return np.fft.fftn(d*window)/np.size(d)
+
+def kaiser_components(d,win=None, beta=8.5):
+    """Want to return Fourier components with optional window
+    Application note: These components are dependent on sampling!
+    This means you can *not* interpolate these components onto other
+    frequency grids!
+    """
+    #Handle window
+    if win != 1:
+        if np.size(np.shape(d)) == 1: # if the data array is 1D
+            window = np.kaiser(np.size(d), beta)/np.sqrt(np.mean(win(np.size(d))**2))
+        else:
+            win1 = np.kaiser(np.shape(d)[0], beta)
+            win2 = np.kaiser(np.shape(d)[1], beta)
             window = np.outer(win1,win2)
             window = window/np.sqrt(np.mean(window**2))
     else: window = 1
@@ -297,11 +318,16 @@ def compute_PSD_stack_RMS(psd_stack, map_no, df, f1=None, f2=None, method='linea
 
 def PSD_plot(PSD_stacks, dist_num, PSD_axis,
             labels=None, dtype='um', dist_num_label=None,
-            figsize=None, title_fontsize=14, ax_fontsize=12,
+            figsize=None, title_fontsize=14, ax_fontsize=12, legend_fontsize=12,
             title=None, xlabel=None, ylabel=None, colors=None, linestyles=None,
             freq_limit=None, freq_limit_label=None, freq_line_top_end=1,
             includeLegend=True, legendCoords=(1.65, 0.5), legendCols=1, legendLoc='right',
             xlims=None, ylims=None, include_RMS=True):
+    """
+    PSD stacks: list of 4D arrays returned by PSD_stack()
+    dist_num: Which distortion (psd_stack[i]) to plot the PSD for
+    PSD_axis: 0 for rowwise PSD, 1 for colwise PSD
+    """
     N_lines = len(PSD_stacks)
     if not labels:
         labels = [''] * len(PSD_stacks)
@@ -323,8 +349,8 @@ def PSD_plot(PSD_stacks, dist_num, PSD_axis,
         yvals = PSD_array[dist_num, PSD_axis, 1]
         rmsval = compute_PSD_stack_RMS(PSD_array, dist_num, 1e-5)
         if include_RMS:
-            rmsLabel = 'RMS = {:.2f} {}'.format(rmsval, dtype)
-            labels = [label+'\n' for label in labels]
+            rmsLabel = '\nRMS = {:.2f} {}'.format(rmsval, dtype)
+            # labels = [label+'\n' for label in labels]
         else:
             rmsLabel = ''
         ax.plot(xvals, yvals, color=colors[i], marker='.',
@@ -350,7 +376,7 @@ def PSD_plot(PSD_stacks, dist_num, PSD_axis,
     if dist_num_label is None:
         dist_num_label = dist_num
     if xlims is not None:
-        print('xlims:', xlims)
+        #print('xlims:', xlims)
         ax.set_xlim(xmin=xlims[0], xmax=xlims[1])
     if ylims is not None:
         ax.set_ylim(ymin=ylims[0], ymax=ylims[1])
@@ -360,8 +386,90 @@ def PSD_plot(PSD_stacks, dist_num, PSD_axis,
     ax.set_title(title, fontsize=title_fontsize)
     if includeLegend:
         ax.legend(ncol=legendCols, bbox_to_anchor=legendCoords, loc=legendLoc,
-                    fontsize=ax_fontsize, framealpha=0.)
+                    fontsize=legend_fontsize, framealpha=0.)
     return fig
+
+def plot_2DPSD(p, fx, fy, vbounds=None, log_psd=True, cmap='viridis',
+               xlabel=r'Azimuthal Spatial Frequency ($\mathrm{mm}^{-1})$',
+               ylabel=r'Axial Spatial Frequency ($\mathrm{mm}^{-1})$',
+               cbartitle=None,
+               title=None, ax_fontsize=12, title_fontsize=12, tickSize=None, tickLabelSize=10,
+               xtickLabelRotation=None, ytickLabelRotation=None, figsize=(6,6)):
+    if vbounds is None:
+        vbounds = [None, None]
+    fig = plt.figure(figsize=figsize)
+    ax_ls, cax_ls = init_subplots(1, fig, [title], [xlabel], [ylabel], title_fontsize, ax_fontsize,
+                                  tickSize=tickSize, tickLabelSize=tickLabelSize, 
+                                  xtickLabelRotation=xtickLabelRotation, ytickLabelRotation=ytickLabelRotation)
+    ax, cax = ax_ls[0], cax_ls[0]
+
+    extent = [fx[0], fx[-1], fy[0], fy[-1]]
+    if log_psd:
+        disp_p = np.flipud(np.log10(np.copy(p)))
+    else:
+        disp_p = np.flipud(np.copy(p))
+    img = ax.imshow(disp_p, aspect='auto', cmap=cmap, extent=extent, vmin=vbounds[0], vmax=vbounds[1])
+    if cbartitle is None and log_psd:
+        cbartitle = r'$\log_{10} (\mathrm{Power})$'
+    if cbartitle is None and not log_psd:
+        cbartitle = 'Power'
+    cbar = fig.colorbar(img, cax=cax)
+    cbar.ax.tick_params(axis='both', which='both', width=tickSize, labelsize=tickLabelSize)
+    cbar.set_label(cbartitle, fontsize=ax_fontsize)
+    return fig
+
+def real2DPSD(d, win=np.hanning, dx=1., rms_norm=True):
+    c = components(d, win=win)
+    # get non-negative frequencies in y and x
+    freq_y = np.fft.fftfreq(c.shape[0], d=dx)[:int(c.shape[0]/2)]
+    freq_x = np.fft.fftfreq(c.shape[1], d=dx)[:int(c.shape[1]/2)]
+    # get the components that are associated with the non-negative frequencies
+    c = c[:int(c.shape[0]/2),:int(np.shape(c)[1]/2)]
+    c[0, 0] = 0.
+    # handle normalization and calculate psd
+    c = 2*c/np.sqrt(2.)
+    psd = np.abs(c)**2
+    # return positive frequencies and psd
+    positive_fy = freq_y[1:]
+    positive_fx = freq_x[1:]
+    positive_c = psd[1:, 1:]
+    if rms_norm:
+        rms = alsis.rms(d)
+        positive_c = positive_c * (rms/np.sqrt(np.sum(positive_c)))**2
+    return positive_fx, positive_fx, positive_c
+
+def computeFreqBand2D(fx, fy, p, fx1, fx2, fy1, fy2, dfx=1e-3, dfy=1e-3, method='linear', 
+                      norm=False):
+    """
+    Compute the RMS of a 2-dimensional PSD inside an area. real2DPSD() should have 
+    already been run with rms_norm=True.
+    fx: the x frequency values returned by real2DPSD()
+    fy: the y frequency values returned by real2DPSD()
+    p: the power values returned by real2DPSD()
+    fx1, fx2: the lower and upper frequency bounds in the x-direction to integrate
+    fy1, fy2: the lower and upper frequency bounds in the y-direction to integrate
+    dfx, dfy: The spacing between adjacent frequency values in x and y for the new frequency values that
+            will be used to generate the new power values.
+    """
+    grid_fx, grid_fy = np.meshgrid(fx, fy)
+    new_fx = np.linspace(fx1, fx2, int((fx2-fx1)/dfx+1))
+    new_fy = np.linspace(fy1, fy2, int((fy2-fy1)/dfy+1))
+    grid_new_fx, grid_new_fy  = np.meshgrid(new_fx, new_fy)
+    points = (grid_fx.flatten(), grid_fy.flatten())
+    values = p.flatten()#/np.mean([fx[0], fy[0]])
+    regrid_points = (grid_new_fx, grid_new_fy)
+    new_p = griddata(points, values, regrid_points, method=method)
+    integral = simps(simps(new_p, new_fx, axis=1), new_fy)
+    if norm:
+        integral *= (np.sqrt(np.sum(p))/alsis.rms(p))**2/np.mean([fx[0], fy[0]])
+    rms = np.sqrt(integral)
+    return rms, new_p, new_fx, new_fy
+
+def computeFreqBand2D_meritFunc(fx, fy, p, fx1, fx2, fy1, fy2, dfx=1e-3, dfy=1e-3, 
+                                method='linear'):
+    _, new_p, _, _ = computeFreqBand2D(fx, fy, p, fx1, fx2, fy1, fy2, dfx=dfx, dfy=dfy, 
+                                       method=method)
+    return np.mean(new_p)
 
 
 def lowpass(d,dx,fcut):
@@ -382,7 +490,7 @@ def lowpass(d,dx,fcut):
     #Apply cutoff
     f[fr>fcut] = 0.
     #Inverse FFT
-    filtered = np.fft.ifftn(f)
+    filtered = np.fft.ifftn(f).real
     return filtered
 
 def randomizePh(d):

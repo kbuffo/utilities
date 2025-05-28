@@ -7,6 +7,7 @@ from linecache import getline
 import astropy.io.fits as pyfits
 import pdb
 import h5py
+import csv
 
 def printer():
     print('Hello metrology!')
@@ -82,13 +83,16 @@ def readCyl4D(fn,rotate=np.linspace(.75,1.5,50),interp=None, fliplr=True):
     """
     #Get xpix value in mm
     l = getline(fn,9)
+    wedge = float(getline(fn, 8).split()[-1])
+    if wedge != 0.5:
+        print('Wedge != 0.5, wedge = {}'.format(wedge))
     dx = float(l.split()[1])*1000.
 
     #Remove NaNs and rescale
     d = np.genfromtxt(fn,skip_header=12,delimiter=',')
     print('array size before manipulation:', d.shape)
     d = man.stripnans(d)
-    d = d *.6328
+    d = d *.6328 * wedge
     d = d - np.nanmean(d)
     print('array size after striping nans:', d.shape)
 
@@ -119,6 +123,9 @@ def readCyl4D_h5(h5_file, rotate=np.linspace(.75,1.5,50), fliplr=True):
     #################
     # Getting the attributes of the data directly from the .h5 file
     wedge = meas['genraw'].attrs['wedge']
+    if wedge != 0.5:
+        print('Error: wedge != 0.5, wedge = {}'.format(wedge))
+        return None
     height_unit = meas['genraw'].attrs['height_units']
     wave = meas['genraw'].attrs['wavelength']
     xpix = meas['genraw'].attrs['xpix']
@@ -126,7 +133,7 @@ def readCyl4D_h5(h5_file, rotate=np.linspace(.75,1.5,50), fliplr=True):
     #################
     # Processing the data as though it's a cylinder.
     # Apply the wedge factor.
-    raw_data = np.array(meas['genraw']['data'])  #*wedge
+    raw_data = np.array(meas['genraw']['data'])  #* wedge
     # Removing the absurdly large value defaulted to for bad data and replacing it with a NaN.
     raw_data[raw_data > 1e10] = np.NaN
     # Then stripping that bad data flagged as nans from the perimeter.
@@ -163,7 +170,8 @@ def readCyl4D_h5(h5_file, rotate=np.linspace(.75,1.5,50), fliplr=True):
 
     if pix_unit == 'inch':
         pix_num *= 25.4
-    if fliplr: data = np.fliplr(data) # we fliplr to compensate for the CGH flipping the measurement
+    if fliplr: 
+        data = np.fliplr(data) # we fliplr to compensate for the CGH flipping the measurement
     return data, pix_num
 
 def readConic4D(fn,rotate=None,interp=None):
@@ -248,7 +256,7 @@ def readFlatScript(fn,interp=None):
 
     return d,dx
 
-def readFlat4D(fn,interp=None):
+def readFlat4D(fn,interp=None,printLength=True):
     """
     Load in data from 4D measurement of flat mirror.
     Scale to microns, remove misalignments,
@@ -259,25 +267,29 @@ def readFlat4D(fn,interp=None):
     """
     #Get xpix value in mm
     l = getline(fn,9)
-    # print("Here's l:", l)
-    # print("Here's l split:", l.split())
-    # print("Here's the 2nd item of l split:", l.split()[1])
+    wedge = float(getline(fn, 8).split()[-1])
+    if wedge != 0.5:
+        print('Wedge != 0.5, wedge = {}'.format(wedge))
+        return None
     dx = float(l.split()[1])*1000.
-
     #Remove NaNs and rescale
     d = np.genfromtxt(fn,skip_header=12,delimiter=',')
     d = man.stripnans(d)
-    d = d *.6328
+    d = d *.6328 * wedge
     d = d - np.nanmean(d)
-    # d = np.fliplr(d)
+    # Remove tip from data
+    d -= fit.legendre2d(d, xo=0, yo=1)[0]
+    # Remove tilt from data
+    d -= fit.legendre2d(d, xo=1, yo=0)[0]
 
     #Interpolate over NaNs
     if interp is not None:
         d = man.nearestNaN(d,method=interp)
-    print('The optic for {} is {:.2f} in long.'.format(fn, (d.shape[0]*dx)/25.4))
+    if printLength:
+        print('The optic for {} is {:.2f} in long.'.format(fn, (d.shape[0]*dx)/25.4))
     return d,dx
 
-def readFlat4D_h5(h5_file):
+def readFlat4D_h5(h5_file, removeTipTilt=True, applyWedge=False):
     f = h5py.File(h5_file, 'r')
     meas = f['measurement0']
     # print('meas keys:', meas.keys())
@@ -286,19 +298,29 @@ def readFlat4D_h5(h5_file):
     #################
     # Getting the attributes of the data directly from the .h5 file
     wedge = meas['genraw'].attrs['wedge']
+    if wedge != 0.5:
+        print('Error: wedge != 0.5, wedge = {}'.format(wedge))
+        return None
     height_unit = meas['genraw'].attrs['height_units']
     wave = meas['genraw'].attrs['wavelength']
     xpix = meas['genraw'].attrs['xpix']
     #################
     # Processing the data as though it's a cylinder.
+    raw_data = np.array(meas['genraw']['data'])
     # Apply the wedge factor.
-    raw_data = np.array(meas['genraw']['data'])  #*wedge
+    #if applyWedge:
+    #    raw_data *= wedge
     # Removing the absurdly large value defaulted to for bad data and replacing it with a NaN.
     raw_data[raw_data > 1e10] = np.NaN
     # Then stripping that bad data flagged as nans from the perimeter.
     data = man.stripnans(raw_data)
     # Set the average surface to zero (i.e., remove piston)
     data -= np.nanmean(data)
+    if removeTipTilt:
+        # Remove tip from data
+        data -= fit.legendre2d(data, xo=0, yo=1)[0]
+        # Remove tilt from data
+        data -= fit.legendre2d(data, xo=1, yo=0)[0]
     # Apply unit transformation converting data to microns.
     height_unit = height_unit.decode('UTF-8')
     # print('height unit:', height_unit)
@@ -314,6 +336,66 @@ def readFlat4D_h5(h5_file):
     if pix_unit == 'inch':
         pix_num *= 25.4
     return data, pix_num
+
+def readQCstats_csv(csv_file):
+    """
+    Reads a stats csv file from doing a QC measurement in 4Sight. N is the 
+    number of averaged measurements in the QC measurement. Units are specified 
+    in the file provided.
+    Returns:
+    PVr: 1D array of PVr values for each averaged measurement and has len(N)
+    RMS: 1D array of RMS values for each averaged measurement and has len(N)
+    delta_PVr: 1D array of PVr values for each delta averaged measurement and has len(N)
+    delta_RMS: 1D array of RMS values for each delta averaged measurement adn has len(N)
+    """
+    PVr, RMS, delta_PVr, delta_RMS = [], [], [], []
+    with open(csv_file, 'r') as f:
+        csv_reader = csv.reader(f)
+        line_num = 0
+        meas_num = 1
+        for line in csv_reader:
+            if line and line[0] == str(meas_num):
+                PVr.append(float(line[1]))
+                RMS.append(float(line[2]))
+                delta_PVr.append(float(line[3]))
+                delta_RMS.append(float(line[4]))
+                meas_num = int(meas_num) + 1
+        return np.array(PVr), np.array(RMS), np.array(delta_PVr), np.array(delta_RMS)
+                
+def readQCparams_csv(csv_file):
+    """
+    Reads a parameters file from doing a QC measurement in 4Sight. N is the 
+    number of averaged measurements in the QC measurement. Units
+    are specified in the file provided.
+    Returns:
+    PVr_uncal_acc: The uncalibrated PVr accuracy, the PVr of averaging N averaged measurements
+    RMS_uncal_acc: The uncalibrated RMS accuracy, the RMS of averaging N averaged measurements
+    PVr_rep: The PVr repeatability, the standard deviation of N PVr values
+    RMS_rep: The RMS repeatability, the standard deviation of N RMS values
+    PVr_prec: The PVr precision, the mean of the delta PVr values
+    RMS_prec: The RMS precision, the mean of the delta RMS values
+    """
+    with open(csv_file, 'r') as f:
+        csv_reader = csv.reader(f)
+        line_num = 0
+        for line in csv_reader:
+            if len(line) == 6:
+                if line[1] == 'PVr Uncalibrated Accuracy':
+                    PVr_uncal_acc = float(line[3])
+                elif line[1] == 'RMS Uncalibrated Accuracy':
+                    RMS_uncal_acc = float(line[3])
+                elif line[1] == 'PVr Repeatibility':
+                    PVr_rep = float(line[3])
+                elif line[1] == 'RMS Repeatibility':
+                    RMS_rep = float(line[3])
+                elif line[1] == 'PVr Precision':
+                    PVr_prec = float(line[3])
+                elif line[1] == 'RMS Precision':
+                    RMS_prec = float(line[3])
+                else:
+                    continue
+            line_num += 1
+        return PVr_uncal_acc, RMS_uncal_acc, PVr_rep, RMS_rep, PVr_prec, RMS_prec
 
 def write4DFits(filename,img,dx,dx2=None):
     """

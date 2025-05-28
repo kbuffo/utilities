@@ -196,7 +196,7 @@ def plot_ROC_and_sag(d, dx, ylim=None):
     ax[0].plot(xvals_0, d[int(d.shape[0]/2)], label='Middle of mirror')
     ax[0].plot(xvals_0, d[-1], label='Bottom of mirror')
     ax[0].set_xlabel('Azimuthal Dimension (mm)')
-    ax[0].set_ylabel('Figure (microns)')
+    ax[0].set_ylabel('Figure (mm)')
     ax[0].set_title('ROC of Mirror')
     ax[0].legend()
     if ylim:
@@ -205,7 +205,7 @@ def plot_ROC_and_sag(d, dx, ylim=None):
     yvals_1 = np.abs(d[:, -1] - d[:, int(d.shape[0]/2)])
     ax[1].plot(xvals_1, yvals_1)
     ax[1].set_xlabel('Axial Dimension (mm)')
-    ax[1].set_ylabel('Axial Sag (microns)')
+    ax[1].set_ylabel('Axial Sag (mm)')
     ax[1].set_title('Axial Sag Along Mirror')
     fig.tight_layout()
     return fig

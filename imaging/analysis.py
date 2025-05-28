@@ -10,11 +10,32 @@ def printer():
 
 def ptov(d):
     """Return the peak to valley of an image"""
+    #print(d.shape)
+    #print(d)
     return nanmax(d)-nanmin(d)
+
+def ptov_q(d_in, q=.90):
+    """
+    Q Peak-to-Valley: disregards the highest and lowest pixels and only consider the remaining Q Percent of pixels.
+    """
+    d = d_in[~np.isnan(d_in)] # exclude nans
+    N_elements = int(np.round(q*d.size))
+    start_idx = int((d.size - N_elements) // 2)
+    d_sort = np.sort(d.flatten())
+    d_trim = d_sort[start_idx:start_idx+N_elements]
+    pvq = ptov(d_trim)
+    return pvq
 
 def rms(d):
     """Return the RMS of an image"""
     return sqrt(nanmean((d-nanmean(d))**2))
+
+def funcArgIntersect(a, b):
+    """
+    Returns the indices where two 1 dimensional arrays intersect, even if the exact
+    values are not present in both arrays.
+    """
+    return np.argwhere(np.diff(np.sign(a - b))).flatten()
 
 def fitSag(d):
     """

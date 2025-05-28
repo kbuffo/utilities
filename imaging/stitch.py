@@ -395,7 +395,7 @@ def AlignImagesWithFiducials(img1,img2,xf1,yf1,xf2,yf2):
 
     return newimg
 
-def AlignImagesWithFiducials_SeparateMag(img1,img2,xf1,yf1,xf2,yf2):
+def AlignImagesWithFiducials_SeparateMag(img1,img2,xf1,yf1,xf2,yf2, printTransform=False):
     """
     Aligns img2 to img1 based on an array listing the x,y coordinates of common fiducials.
     Arguments:
@@ -413,6 +413,8 @@ def AlignImagesWithFiducials_SeparateMag(img1,img2,xf1,yf1,xf2,yf2):
     #pdb.set_trace()
 
     tx,ty,theta,x_mag,y_mag = matchFiducials_wSeparateMag(xf1,yf1,xf2,yf2)
+    if printTransform:
+        print('tx: {:.3f} pix, ty: {:.3f} pix, theta: {:.3f} deg, x_mag: {:.3f}, y_mag: {:.3f}'.format(tx, ty, theta, x_mag, y_mag))
 
     x2_wNaNs,y2_wNaNs,z2_wNaNs = man.unpackimage(img2,remove = False,xlim=[0,np.shape(img2)[1]],\
                            ylim=[0,np.shape(img2)[0]])
